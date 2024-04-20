@@ -1,6 +1,6 @@
-package com.example.daily_quest_wear.presentation.api
+package data.api
 
-import Contribution
+import data.response.Contribution
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path
