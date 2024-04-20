@@ -114,7 +114,7 @@ fun QuestItem(quest: Quest, onCheckedChange: (Quest, Boolean) -> Unit) {
         Text(
             text = quest.name,
             fontSize = 13.sp,
-            textAlign = TextAlign.Start // テキストの先頭を揃える
+            overflow = TextOverflow.Visible
         )
     }
 }
