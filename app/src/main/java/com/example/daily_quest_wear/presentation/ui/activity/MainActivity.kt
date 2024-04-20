@@ -1,42 +1,50 @@
 package com.example.daily_quest_wear.presentation.ui.activity
 
+import Quest
+import QuestViewModel
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
-import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Checkbox
 import kotlinx.coroutines.delay
 import java.util.*
 
 class MainActivity : ComponentActivity() {
+    private val questViewModel by viewModels<QuestViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            DailyQuestWearApp()
+            DailyQuestWearApp(questViewModel)
         }
     }
 }
 
 @Composable
-fun DailyQuestWearApp() {
+fun DailyQuestWearApp(viewModel: QuestViewModel) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CountdownTimer()
-        DailyQuestBox()
+        DailyQuestBox(viewModel)
     }
 }
 
@@ -76,37 +84,42 @@ fun calculateRemainingTime(): String {
 }
 
 @Composable
-fun DailyQuestBox() {
+fun DailyQuestBox(viewModel: QuestViewModel) {
     // Placeholder content, replace with actual daily quests
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
-        QuestItem(text = "タスクを完了する", isChecked = false)
-        QuestItem(text = "ストレッチをする", isChecked = false)
-        QuestItem(text = "本を読む", isChecked = false)
+        // ViewModelからQuestリストを取得して表示します。
+        viewModel.questList.value.forEach { quest ->
+            QuestItem(quest, viewModel::updateQuestCheckedState)
+        }
     }
 }
 
 @Composable
-fun QuestItem(text: String, isChecked: Boolean) {
+fun QuestItem(quest: Quest, onCheckedChange: (Quest, Boolean) -> Unit) {
     Row(
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.horizontalScroll(rememberScrollState())
     ) {
         Checkbox(
-            checked = isChecked,
-            onCheckedChange = null, // チェックボックスの機能を無効にする
-            enabled = false, // チェックボックスを無効にする
+            checked = quest.isChecked,
+            onCheckedChange = { isChecked ->
+                onCheckedChange(quest, isChecked)
+            },
             modifier = Modifier.padding(end = 8.dp)
         )
         Text(
-            text = text,
+            text = quest.name,
             fontSize = 13.sp,
             textAlign = TextAlign.Start // テキストの先頭を揃える
         )
     }
 }
+
+
 
 @Composable
 fun TextButton(onClick: () -> Unit, modifier: Modifier, colors: Any, content: @Composable () -> Unit) {
@@ -116,5 +129,5 @@ fun TextButton(onClick: () -> Unit, modifier: Modifier, colors: Any, content: @C
 @Preview(device = Devices.WEAR_OS_SMALL_ROUND, showSystemUi = true)
 @Composable
 fun DefaultPreview() {
-    DailyQuestWearApp()
+//    DailyQuestWearApp(questViewModel)
 }
