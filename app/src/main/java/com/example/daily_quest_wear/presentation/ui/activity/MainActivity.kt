@@ -55,7 +55,7 @@ fun CountdownTimer() {
     LaunchedEffect(true) {
         while (true) {
             remainingTime = calculateRemainingTime()
-            delay(60000) // Update every minute
+            delay(1000) // Update every minute
         }
     }
 
@@ -80,7 +80,9 @@ fun calculateRemainingTime(): String {
     val diff = nextDay.timeInMillis - currentTime.timeInMillis
     val hours = diff / (1000 * 60 * 60)
     val minutes = (diff / (1000 * 60)) % 60
-    return String.format("%02d:%02d", hours, minutes)
+    val seconds = (diff / 1000) % 60
+
+    return String.format("%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 @Composable
