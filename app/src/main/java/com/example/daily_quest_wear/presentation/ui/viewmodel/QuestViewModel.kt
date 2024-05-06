@@ -1,7 +1,15 @@
+package com.example.daily_quest_wear.presentation.ui.viewmodel
+
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import data.repository.GitHubRepository
+import data.response.Contribution
+import kotlinx.coroutines.launch
 
-class QuestViewModel : ViewModel() {
+class QuestViewModel(
+    private val gitHubRepository: GitHubRepository
+) : ViewModel() {
     private val _questList = mutableStateOf<List<Quest>>(emptyList())
     val questList = _questList
 
@@ -21,6 +29,19 @@ class QuestViewModel : ViewModel() {
                 it.copy(isChecked = isChecked)
             } else {
                 it
+            }
+        }
+    }
+
+    fun checkGithub() {
+        val username = "test"
+        viewModelScope.launch {
+            gitHubRepository.getContributions(username) { contributions ->
+                val hasContributions = contributions?.isNotEmpty() == true
+                updateQuestCheckedState(
+                    _questList.value.find { it.name == "Githubにコントリビュート" }!!,
+                    hasContributions
+                )
             }
         }
     }
