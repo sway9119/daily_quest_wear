@@ -7,6 +7,9 @@ import com.example.daily_quest_wear.presentation.ui.viewmodel.DetectionType
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -14,9 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
@@ -235,67 +245,134 @@ fun ProgressInputDialog(
     onProgressUpdate: (Int) -> Unit
 ) {
     var inputValue by remember { mutableStateOf(quest.currentValue) }
+    var tapScale by remember { mutableStateOf(1f) }
+    val isCompleted = inputValue >= quest.targetValue
+
+    // タップ時のアニメーション
+    val animatedScale by animateFloatAsState(
+        targetValue = tapScale,
+        animationSpec = tween(durationMillis = 100),
+        finishedListener = { tapScale = 1f }
+    )
+
+    // 進捗に応じた色
+    val progressRatio = if (quest.targetValue > 0) inputValue.toFloat() / quest.targetValue else 0f
+    val progressColor = when {
+        isCompleted -> Color(0xFF4CAF50) // 緑：達成
+        progressRatio >= 0.7f -> Color(0xFFFF9800) // オレンジ：もう少し
+        progressRatio >= 0.3f -> Color(0xFF2196F3) // 青：進行中
+        else -> Color(0xFF607D8B) // グレー：開始
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.9f))
-            .clickable { onDismiss() },
+            .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        // 円形プログレス + カウンター
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .clickable(enabled = false) { /* 内部クリックを親に伝播させない */ },
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .size(140.dp)
+                .scale(animatedScale)
+                .clickable {
+                    inputValue++
+                    tapScale = 1.15f
+                },
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = quest.name,
-                fontSize = 14.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "$inputValue/${quest.targetValue}${quest.unit}",
-                fontSize = 20.sp,
-                color = MaterialTheme.colors.primary,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            // 円形プログレスリング
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val strokeWidth = 12.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2
+                val center = Offset(size.width / 2, size.height / 2)
 
-            // +/- ボタン
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = {
-                        if (inputValue > 0) inputValue--
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Text("-", fontSize = 20.sp)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Button(
-                    onClick = {
-                        if (inputValue < quest.targetValue) inputValue++
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Text("+", fontSize = 20.sp)
-                }
+                // 背景リング
+                drawCircle(
+                    color = Color(0xFF333333),
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = strokeWidth)
+                )
+
+                // プログレスリング
+                val sweepAngle = (progressRatio.coerceIn(0f, 1f) * 360f)
+                drawArc(
+                    color = progressColor,
+                    startAngle = -90f,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    topLeft = Offset(center.x - radius, center.y - radius),
+                    size = Size(radius * 2, radius * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // カウント表示
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "$inputValue",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isCompleted) progressColor else Color.White
+                )
+                Text(
+                    text = "/ ${quest.targetValue}${quest.unit}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                if (isCompleted) {
+                    Text(
+                        text = "CLEAR!",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = progressColor
+                    )
+                }
+            }
+        }
+
+        // クエスト名（上部）
+        Text(
+            text = quest.name,
+            fontSize = 14.sp,
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 20.dp)
+        )
+
+        // 下部ボタン
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // -1 ボタン
+            Button(
+                onClick = { if (inputValue > 0) inputValue-- },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Text("-", fontSize = 16.sp)
+            }
 
             // 保存ボタン
             Button(
-                onClick = { onProgressUpdate(inputValue) }
+                onClick = { onProgressUpdate(inputValue) },
+                modifier = Modifier.height(36.dp)
             ) {
-                Text("保存", fontSize = 12.sp)
+                Text("OK", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // 閉じるボタン
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Text("×", fontSize = 16.sp)
             }
         }
     }
