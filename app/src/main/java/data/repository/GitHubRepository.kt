@@ -1,5 +1,6 @@
 package data.repository
 
+import android.util.Log
 import data.api.GitHubService
 import data.response.Contribution
 import retrofit2.Call
@@ -9,18 +10,28 @@ import retrofit2.Response
 class GitHubRepository(
     private val gitHubService: GitHubService
 ) {
-    // GitHubからコントリビューションデータを取得するメソッド
-    fun getContributions(username: String, callback: (List<Contribution>?) -> Unit) {
-        gitHubService.getContributions(username).enqueue(object : Callback<List<Contribution>> {
-            override fun onResponse(call: Call<List<Contribution>>, response: Response<List<Contribution>>) {
+    companion object {
+        private const val TAG = "GitHubRepository"
+    }
+
+    // 今日のGitHubコントリビューションデータを取得するメソッド
+    fun getTodayContributions(callback: (Int?) -> Unit) {
+        Log.d(TAG, "GitHub API呼び出し開始")
+
+        gitHubService.getTodayContributions().enqueue(object : Callback<Contribution> {
+            override fun onResponse(call: Call<Contribution>, response: Response<Contribution>) {
                 if (response.isSuccessful) {
-                    callback(response.body())
+                    val count = response.body()?.count
+                    Log.d(TAG, "GitHub API成功: count=$count, body=${response.body()}")
+                    callback(count)
                 } else {
+                    Log.e(TAG, "GitHub API失敗: code=${response.code()}, message=${response.message()}")
                     callback(null)
                 }
             }
 
-            override fun onFailure(call: Call<List<Contribution>>, t: Throwable) {
+            override fun onFailure(call: Call<Contribution>, t: Throwable) {
+                Log.e(TAG, "GitHub API通信エラー: ${t.message}", t)
                 callback(null)
             }
         })

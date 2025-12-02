@@ -133,10 +133,16 @@ fun DailyQuestList(viewModel: QuestViewModel) {
             QuestItem(
                 quest = quest,
                 onQuestClick = { clickedQuest ->
-                    if (clickedQuest.detectionType == DetectionType.MANUAL) {
-                        selectedQuest = clickedQuest
-                    } else {
-                        viewModel.toggleQuestCompletion(clickedQuest.id)
+                    when (clickedQuest.detectionType) {
+                        DetectionType.MANUAL -> {
+                            selectedQuest = clickedQuest
+                        }
+                        DetectionType.GITHUB -> {
+                            viewModel.checkGithub()
+                        }
+                        else -> {
+                            viewModel.toggleQuestCompletion(clickedQuest.id)
+                        }
                     }
                 }
             )

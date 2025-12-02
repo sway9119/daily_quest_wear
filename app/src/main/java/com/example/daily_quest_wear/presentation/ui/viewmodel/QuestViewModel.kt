@@ -1,15 +1,19 @@
 package com.example.daily_quest_wear.presentation.ui.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import data.api.RetrofitClient
 import data.repository.GitHubRepository
-import data.response.Contribution
 import kotlinx.coroutines.launch
 
-class QuestViewModel(
-    private val gitHubRepository: GitHubRepository? = null
-) : ViewModel() {
+class QuestViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "QuestViewModel"
+    }
+
+    private val gitHubRepository = GitHubRepository(RetrofitClient.gitHubService)
     private val _questList = mutableStateOf<List<Quest>>(emptyList())
     val questList = _questList
 
@@ -49,17 +53,26 @@ class QuestViewModel(
                 detectionType = DetectionType.GITHUB
             )
         )
+
+        // 初期化時にGitHubコントリビューション数を取得
+        checkGithub()
     }
 
     // 進捗を更新するメソッド
     fun updateQuestProgress(questId: String, newValue: Int) {
-        _questList.value = _questList.value.map {
+        Log.d(TAG, "updateQuestProgress: questId=$questId, newValue=$newValue")
+        val updatedList = _questList.value.map {
             if (it.id == questId) {
-                it.copy(currentValue = newValue.coerceIn(0, it.targetValue))
+                // targetValueを超えても許可する（例: 目標1回でも3回やったら3と表示）
+                val finalValue = newValue.coerceAtLeast(0)
+                Log.d(TAG, "Quest更新: ${it.name} ${it.currentValue} -> $finalValue (target=${it.targetValue})")
+                it.copy(currentValue = finalValue)
             } else {
                 it
             }
         }
+        _questList.value = updatedList
+        Log.d(TAG, "questList更新完了")
     }
 
     // 完了状態を切り替えるメソッド（旧互換性のため）
@@ -75,13 +88,16 @@ class QuestViewModel(
     }
 
     fun checkGithub() {
-        val username = "test"
+        Log.d(TAG, "checkGithub() 呼び出し")
         viewModelScope.launch {
-            gitHubRepository?.getContributions(username) { contributions ->
-                val contributionCount = contributions?.size ?: 0
+            gitHubRepository.getTodayContributions { contributionCount ->
+                Log.d(TAG, "コントリビューション取得結果: $contributionCount")
+                val count = contributionCount ?: 0
                 val githubQuest = _questList.value.find { it.detectionType == DetectionType.GITHUB }
+                Log.d(TAG, "GitHub Quest: $githubQuest")
                 githubQuest?.let {
-                    updateQuestProgress(it.id, contributionCount)
+                    Log.d(TAG, "進捗を更新: questId=${it.id}, count=$count")
+                    updateQuestProgress(it.id, count)
                 }
             }
         }
