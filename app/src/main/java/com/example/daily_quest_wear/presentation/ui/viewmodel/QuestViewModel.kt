@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import data.api.RetrofitClient
 import data.repository.GitHubRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class QuestViewModel : ViewModel() {
     companion object {
@@ -101,6 +103,62 @@ class QuestViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    // 0時になったら呼ばれる処理を開始
+    fun startMidnightResetObserver() {
+        viewModelScope.launch {
+            var lastCheckedDate = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+
+            while (true) {
+                delay(1000) // 1秒ごとにチェック
+
+                val currentDate = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+                if (currentDate != lastCheckedDate) {
+                    // 日付が変わった（0時を過ぎた）
+                    Log.d(TAG, "0時を検出: 日次リセットを実行")
+                    onMidnight()
+                    lastCheckedDate = currentDate
+                }
+            }
+        }
+    }
+
+    // 0時になったときの処理
+    private fun onMidnight() {
+        Log.d(TAG, "onMidnight: 日次処理を開始")
+
+        // TODO: サーバーへ記録を送信
+        sendDailyRecordToServer()
+
+        // クエストをリセット
+        resetAllQuests()
+    }
+
+    // サーバーへ記録を送信
+    private fun sendDailyRecordToServer() {
+        val questsToSend = _questList.value
+        Log.d(TAG, "sendDailyRecordToServer: ${questsToSend.size}件のクエストを送信予定")
+
+        // TODO: APIサーバーへの送信を実装
+        // viewModelScope.launch {
+        //     val response = apiService.sendDailyRecord(questsToSend)
+        //     if (response.isSuccessful) {
+        //         Log.d(TAG, "サーバーへの送信成功")
+        //     } else {
+        //         Log.e(TAG, "サーバーへの送信失敗: ${response.code()}")
+        //     }
+        // }
+    }
+
+    // 全クエストをリセット
+    private fun resetAllQuests() {
+        Log.d(TAG, "resetAllQuests: 全クエストの進捗をリセット")
+        _questList.value = _questList.value.map { quest ->
+            quest.copy(currentValue = 0)
+        }
+        // GitHubのコントリビューション数を再取得
+        checkGithub()
     }
 }
 

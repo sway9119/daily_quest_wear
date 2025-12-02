@@ -48,6 +48,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun DailyQuestWearApp(viewModel: QuestViewModel) {
+    // 0時リセットの監視を開始
+    LaunchedEffect(Unit) {
+        viewModel.startMidnightResetObserver()
+    }
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
