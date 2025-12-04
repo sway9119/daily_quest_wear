@@ -26,4 +26,9 @@ object RetrofitClient {
         Log.d(TAG, "GitHubService作成")
         retrofit.create(GitHubService::class.java)
     }
+
+    val questService: QuestService by lazy {
+        Log.d(TAG, "QuestService作成")
+        retrofit.create(QuestService::class.java)
+    }
 }

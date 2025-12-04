@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import data.api.RetrofitClient
 import data.repository.GitHubRepository
+import data.repository.QuestRepository
+import data.response.QuestResponse
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -16,48 +18,46 @@ class QuestViewModel : ViewModel() {
     }
 
     private val gitHubRepository = GitHubRepository(RetrofitClient.gitHubService)
+    private val questRepository = QuestRepository(RetrofitClient.questService)
     private val _questList = mutableStateOf<List<Quest>>(emptyList())
     val questList = _questList
 
-    init {
-        // テスト用のクエストリストを生成します。実際のデータ取得ロジックに置き換えてください。
-        _questList.value = listOf(
-            Quest(
-                id = "1",
-                name = "腕立て伏せ",
-                targetValue = 10,
-                currentValue = 0,
-                unit = "回",
-                detectionType = DetectionType.MANUAL
-            ),
-            Quest(
-                id = "2",
-                name = "ランニング",
-                targetValue = 5,
-                currentValue = 0,
-                unit = "km",
-                detectionType = DetectionType.HEALTHKIT
-            ),
-            Quest(
-                id = "3",
-                name = "読書",
-                targetValue = 60,
-                currentValue = 0,
-                unit = "分",
-                detectionType = DetectionType.MANUAL
-            ),
-            Quest(
-                id = "4",
-                name = "Githubにコントリビュート",
-                targetValue = 1,
-                currentValue = 0,
-                unit = "回",
-                detectionType = DetectionType.GITHUB
-            )
-        )
+    private val _isLoading = mutableStateOf(false)
+    val isLoading = _isLoading
 
-        // 初期化時にGitHubコントリビューション数を取得
-        checkGithub()
+    init {
+        // APIからクエストリストを取得
+        fetchQuests()
+    }
+
+    // APIからクエストを取得
+    fun fetchQuests() {
+        Log.d(TAG, "fetchQuests: クエスト取得開始")
+        _isLoading.value = true
+
+        questRepository.getQuests { questResponses ->
+            if (questResponses != null) {
+                _questList.value = questResponses.map { it.toQuest() }
+                Log.d(TAG, "fetchQuests: ${questResponses.size}件のクエストを取得")
+                // GitHubクエストがあればコントリビューション数を更新
+                checkGithub()
+            } else {
+                Log.e(TAG, "fetchQuests: クエスト取得失敗")
+            }
+            _isLoading.value = false
+        }
+    }
+
+    // QuestResponseをQuestに変換
+    private fun QuestResponse.toQuest(): Quest {
+        return Quest(
+            id = this.id,
+            name = this.name,
+            targetValue = this.targetValue,
+            currentValue = this.currentValue,
+            unit = this.unit,
+            detectionType = DetectionType.valueOf(this.detectionType)
+        )
     }
 
     // 進捗を更新するメソッド
@@ -154,11 +154,8 @@ class QuestViewModel : ViewModel() {
     // 全クエストをリセット
     private fun resetAllQuests() {
         Log.d(TAG, "resetAllQuests: 全クエストの進捗をリセット")
-        _questList.value = _questList.value.map { quest ->
-            quest.copy(currentValue = 0)
-        }
-        // GitHubのコントリビューション数を再取得
-        checkGithub()
+        // APIから最新のクエストリストを再取得
+        fetchQuests()
     }
 }
 
