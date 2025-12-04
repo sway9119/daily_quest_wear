@@ -1,16 +1,15 @@
 package data.api
 
 import android.util.Log
+import com.example.daily_quest_wear.BuildConfig
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     private const val TAG = "RetrofitClient"
 
-    // adb reverse でポートフォワーディング設定済み
-    // エミュレータから localhost でホストマシンにアクセス可能
-    // 実機の場合は開発マシンのIPアドレスを使用（例: 192.168.x.x）
-    private const val BASE_URL = "http://localhost:8080/"
+    // local.propertiesのAPI_BASE_URLから取得
+    private val BASE_URL = BuildConfig.API_BASE_URL
 
     init {
         Log.d(TAG, "Retrofit初期化: BASE_URL=$BASE_URL")
